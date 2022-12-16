@@ -93,7 +93,7 @@ class Helper:
         if self.policies is None:
             self.get_policies()
         ds_name = dataset[self.config['dataset_identifier']].values[0]
-        # get unique pairs for building up the case statement e.g., when Services in ('AFR', 'KLM') then ...
+        # get unique pairs for building up the case statement
         unique = dataset.groupby(self.config['user_identifier'])
         _filter = dataset[self.config['filter_identifier']].values[0]
         parent_path = dataset[self.config['parent_path_identifier']].values[0]+"."+ds_name
