@@ -110,9 +110,9 @@ class Helper:
             if unique.ngroups == 1:
                 key = list(unique.groups.keys())[0]
                 item = unique.get_group(key)
-                service = item[self.config['user_identifier']].values[0]
-                airlines = item[self.config['criteria_identifier']].values
-                rule_str += "\n\tWHEN query_user()='{0}' and {1}='{2}' THEN true".format(service, _filter, airlines[0])
+                user = item[self.config['user_identifier']].values[0]
+                criteria = item[self.config['criteria_identifier']].values
+                rule_str += "\n\tWHEN query_user()='{0}' and {1}='{2}' THEN true".format(user, _filter, criteria[0])
                 rule_str += "\n\tELSE false\nEND;"
             else:
                 for key, item in unique:
