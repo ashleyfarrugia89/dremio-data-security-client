@@ -26,8 +26,8 @@ The following table provides understanding the configuration parameters that are
 | path_identifier 	| Identifier for finding the path of the VDS that you want to create the rule for within your rules entity 	| Yes 	|
 | parent_path_identifier 	| Identifier for finding the parent path of the VDS that you want to create the rule for within your rules entity 	| Yes 	|
 | privilege_identifier 	| Identifier for the privilege that we want to apply to the VDS | Yes 	|
-| filter_identifier 	| Identifier for the filter that we are using to impose the row-level data access 	|
-| criteria_identifier 	| Identifier for the criteria that we will use within the policy to determine the rows to return for the row-level data access|
+| filter_identifier 	| Identifier for the filter that we are using to impose the row-level data access 	|   Yes for row-level control |
+| criteria_identifier 	| Identifier for the criteria that we will use within the policy to determine the rows to return for the row-level data access|   Yes for row-level control |
 
 ### Rules Entity
 The rules entity is used to determine who should have access to which objects and what access they should have. This can be provided via a .csv file or it can use an external source through a Dremio VDS. This means that your rules can be derived from a centrally managed source e.g., Postgres., to ensure consistent access control is enabled throughout the organisation. The following Table gives an example of what this rules entity should look like for the nyc_trips dataset.
