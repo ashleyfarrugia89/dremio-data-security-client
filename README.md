@@ -30,7 +30,7 @@ The following table provides understanding the configuration parameters that are
 | criteria_identifier 	| Identifier for the criteria that we will use within the policy to determine the rows to return for the row-level data access|
 
 ### Rules Entity
-The rules entity is used to determine who should have access to which objects and what access they should have. This can be provided via a .csv file or it can use an external source through a Dremio VDS. This means that your rules can be derived from a centrally managed source e.g., Postgres., to ensure consistent access control is enabled throughout the organisation. The following Table gives an example of what this rules entity should look like.
+The rules entity is used to determine who should have access to which objects and what access they should have. This can be provided via a .csv file or it can use an external source through a Dremio VDS. This means that your rules can be derived from a centrally managed source e.g., Postgres., to ensure consistent access control is enabled throughout the organisation. The following Table gives an example of what this rules entity should look like for the nyc_trips dataset.
 
 | User  	| Dataset  | Criteria 	| Access 	| Path 	| Filter 	| ParentPath 	|
 |---	|:---	|:--- |:--- |:--- |:---|	---|
