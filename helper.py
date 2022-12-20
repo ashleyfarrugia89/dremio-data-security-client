@@ -59,7 +59,7 @@ class Helper:
     def get_views(self):
         df = self.query("select path from sys.views", read=True)
         # extract path
-        self.views = df['path'].apply(lambda x: ".".join(['"{0}"'.format(x.strip()) for x in x[1:len(x) - 1].split(",")]))
+        self.views = df['path'].apply(lambda x: ".".join(['"{0}"'.format(x.strip()) for x in x[1:len(x) - 1].split(",")]).replace("\"", ""))
     def get_privileges(self, groups=False):
         if groups:
             self.privileges = self.query("SELECT grantee_id as grantee, privilege, object_id as object FROM sys.privileges", read=True)
@@ -73,13 +73,13 @@ class Helper:
             return True
         else:
             return False
-    def check_exists(self, df, string, column=False):
-        if column:
-            exists = df[column].loc[df[column].str.contains(string, case=False)].any().all()
-        else:
-            exists = df.loc[df.str.contains(string, case=False)].any().all()
-        if exists:
+    def check_exists(self, df, string, ret=False):
+        tmp = df.loc[df.str.contains(string, case=False)]
+        exists = tmp.any().all()
+        if exists and not ret:
             return True
+        elif exists and ret:
+            return df.iloc[tmp[0]]
         else:
             return False
     def validate_and_apply_policy(self, name, policy):
@@ -92,12 +92,12 @@ class Helper:
         # if being run for the first time then get the privileges from Dremio
         if self.policies is None:
             self.get_policies()
-        ds_name = dataset[self.config['dataset_identifier']].values[0]
+        target_ds_name = dataset[self.config['parent_path_identifier']].values[0]+"."+dataset[self.config['dataset_identifier']].values[0]
+        ds_name = self.check_exists(self.views, target_ds_name, ret=True)
         # get unique pairs for building up the case statement
         unique = dataset.groupby(self.config['user_identifier'])
         _filter = dataset[self.config['filter_identifier']].values[0]
-        parent_path = dataset[self.config['parent_path_identifier']].values[0]+"."+ds_name
-        function_name = "{0}_rbac".format(parent_path)
+        function_name = "{0}_rbac".format(ds_name)
         function_def = "{0}({1} VARCHAR)".format(function_name,_filter)
         access_policy_func = "{0}({1})".format(function_name,_filter)
         res = False
@@ -130,7 +130,7 @@ class Helper:
             grant_execute = 'GRANT EXECUTE ON FUNCTION {0} TO user "{1}"'.format(function_name, self.config['username'])
             # create rule
             res = self.query(grant_execute)
-            add_policy_to_vds = 'ALTER VIEW {0} ADD ROW ACCESS POLICY {1}'.format(parent_path, access_policy_func)
+            add_policy_to_vds = 'ALTER VIEW {0} ADD ROW ACCESS POLICY {1}'.format(ds_name, access_policy_func)
             res = self.query(add_policy_to_vds)
     def validate_and_apply_privilege(self, user, vds, privilege):
         if self.check_permission(user, privilege, vds) and privilege.lower() != "revoke":
