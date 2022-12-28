@@ -1,6 +1,22 @@
 import configparser
 from pyarrow import flight
 import pandas as pd
+from datetime import datetime
+
+class Log:
+    def __init__(self, file):
+        self.logging_file = open(file, 'a+')
+
+    def log_msg(self, msg, _type):
+        now = datetime.now()
+        dt = now.strftime("%m/%d/%Y %H:%M:%S")
+        self.logging_file.write((f"{[_type]} {dt}: {msg} \n"))
+
+    def debug(self, msg):
+        self.log_msg(msg, "DEBUG")
+
+    def err(self, msg):
+        self.log_msg(msg, "ERROR")
 
 class Helper:
     client = None
@@ -9,6 +25,8 @@ class Helper:
     views = None
     privileges = None
     policies = None
+    def __init__(self):
+        self.logger = Log("dremio-rbac.log")
     def parse_config(self, conf_file, required):
         config = configparser.ConfigParser()
         config.read(conf_file)
@@ -16,7 +34,7 @@ class Helper:
         # validate mandatory properties are provided
         missing = set(required) - set(conf.keys())
         if len(missing) > 0:
-            print("Missing mandatory parameters: {0}".format(missing))
+            self.logger.debug("Missing mandatory parameters: {0}".format(missing))
             return False
         else:
             self.config = conf
@@ -34,7 +52,7 @@ class Helper:
             self.bearer_token = self.client.authenticate_basic_token(self.config['username'], self.config['password'])
             self.options = flight.FlightCallOptions(headers=[self.bearer_token])
         except Exception as e:
-            print("Error connecting to server: {0} - {1}".format(self.config['host'], e))
+            self.logger.err("Error connecting to server: {0} - {1}".format(self.config['host'], e))
             return False
         else:
             return True
@@ -51,7 +69,7 @@ class Helper:
             else:
                 ret = True
         except Exception as e:
-            print("Error submitting query to host: ", e)
+            self.logger.err("Error submitting query to host: ", e)
             ret = False
             return ret
         else:
@@ -74,7 +92,8 @@ class Helper:
         else:
             return False
     def check_exists(self, df, string, ret=False):
-        tmp = df.loc[df.str.contains(string, case=False)]
+        obj = string.replace("\"", "")
+        tmp = df.loc[df.str.contains(obj, case=False)]
         exists = tmp.any().all()
         if exists and not ret:
             return True
@@ -84,7 +103,7 @@ class Helper:
             return False
     def validate_and_apply_policy(self, name, policy, rule_str):
         if self.policies.loc[(self.policies['name'].str.contains(name, case=False)) & (self.policies['policy'].str.contains(rule_str, case=False))].any().all():
-            print("Policy does not need to change")
+            self.logger.debug("Policy does not need to change")
             return False
         else:
             return self.query(policy)
@@ -95,7 +114,7 @@ class Helper:
         target_ds_name = dataset[self.config['policy_path_identifier']].values[0]+"."+dataset[self.config['dataset_identifier']].values[0]
         ds_name = self.check_exists(self.views, target_ds_name, ret=True)
         if not ds_name:
-            print("VDS {0} does not exist".format(target_ds_name))
+            self.logger.debug("VDS {0} does not exist".format(target_ds_name))
             return False
         # get unique pairs for building up the case statement
         unique = dataset.groupby(self.config['user_identifier'])
@@ -138,7 +157,7 @@ class Helper:
             res = self.query(add_policy_to_vds)
     def validate_and_apply_privilege(self, user, vds, privilege):
         if self.check_permission(user, privilege, vds) and privilege.lower() != "revoke":
-            print("Privilege {0} already exists for user {1} on vds {2}".format(privilege, user, vds))
+            self.logger.debug("Privilege {0} already exists for user {1} on vds {2}".format(privilege, user, vds))
             return True
         else:
             if privilege.lower() == "select":
@@ -146,7 +165,7 @@ class Helper:
             elif privilege.lower() == "revoke":
                 stmnt = 'REVOKE ALL ON VDS {1} FROM USER "{2}";'.format(privilege, vds, user)
         res = self.query(stmnt)
-        print("Successfully updated privilege {0} for user {1} on vds {2}".format(privilege, user, vds))
+        self.logger.debug("Successfully updated privilege {0} for user {1} on vds {2}".format(privilege, user, vds))
         return res
     def build_grants(self, dataset):
         # if being run for the first time then get the privileges from Dremio
@@ -156,18 +175,18 @@ class Helper:
         df = dataset.drop_duplicates(subset=[self.config['user_identifier'], self.config['dataset_identifier'], self.config['privilege_identifier']])
         for idx, r in df.iterrows():
             user = r[self.config['user_identifier']]
-            target_vds = '"{0}"."{1}"'.format(r[self.config['path_identifier']], r[self.config['dataset_identifier']].upper())
-            ds_name = self.check_exists(self.views, target_vds, ret=True)
-            # check if vds exists
-            if not ds_name:
-                print("VDS {0} does not exist".format(target_vds))
-                return False
-            # check if the permission already exists if not then apply it
             access = r[self.config['privilege_identifier']]
-            res = self.validate_and_apply_privilege(user=user, vds=ds_name, privilege=access)
-            if res:
-                # check parent
-                target_parent_vds = '"{0}"."{1}"'.format(r[self.config['policy_path_identifier']], r[self.config['dataset_identifier']])
-                ds_name = self.check_exists(self.views, target_parent_vds, ret=True)
-                if ds_name:
-                    res = self.validate_and_apply_privilege(user=user, vds=ds_name, privilege=access)
+            # skip the parent vds
+            if r[self.config['path_identifier']] != "-":
+                target_vds = '"{0}"."{1}"'.format(r[self.config['path_identifier']], r[self.config['dataset_identifier']].upper())
+                ds_name = self.check_exists(self.views, target_vds, ret=True)
+                # check if vds exists
+                if not ds_name:
+                    self.logger.debug("VDS {0} does not exist".format(target_vds))
+                    return False
+                # check if the permission already exists if not then apply it
+                res = self.validate_and_apply_privilege(user=user, vds=ds_name, privilege=access)
+            policy_target_vds = '"{0}"."{1}"'.format(r[self.config['policy_path_identifier']], r[self.config['dataset_identifier']])
+            ds_name = self.check_exists(self.views, policy_target_vds, ret=True)
+            if ds_name:
+                res = self.validate_and_apply_privilege(user=user, vds=ds_name, privilege=access)
