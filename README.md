@@ -37,7 +37,7 @@ The rules entity is used to determine who should have access to which objects an
 | ashley.farrugia@dremio.com  	| nyc_trips  | CMT 	|  SELECT 	|  CoreDataAccessLayer 	| vendor_id 	| BusinessDataAccessLayer 	|
 | ashley.farrugia@dremio.com  	| nyc_trips  | DDS 	|  SELECT 	|  CoreDataAccessLayer 	| vendor_id 	| BusinessDataAccessLayer 	|
 
-,where <i>User</i> is the username that we want to change the privilege for, <i>Dataset</i> is the VDS the permissions will be applied to, <i>Criteria</i> is the filter criteria for providing row-level control, <i>Access</i> the permission applied to the Dataset, <i>Path</i> is the absolute path inside Dremio</i>, <i>Filter</i> is the column that we will filter by; for row-level fine-grained control, and <i>PolicyPath</i> the absolute path for the VDS that the row-level access permissions are applied to.
+,where <i>User</i> is the username that we want to change the privilege for, <i>Dataset</i> is the VDS the permissions will be applied to, <i>Criteria</i> is the filter criteria for providing row-level control, <i>Access</i> the permission applied to the Dataset, <i>Path</i> is the absolute path inside Dremio</i>, <i>Filter</i> is the column that we will filter by; for row-level fine-grained control, and <i>PolicyPath</i> is the absolute path for the VDS that the row-level access permissions are applied to.
 
 
 If you have any questions or issues then please contact me [ashley.farrugia@dremio.com](mailto:ashley.farrugia@dremio.com).
