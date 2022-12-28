@@ -92,7 +92,7 @@ class Helper:
         # if being run for the first time then get the privileges from Dremio
         if self.policies is None:
             self.get_policies()
-        target_ds_name = dataset[self.config['parent_path_identifier']].values[0]+"."+dataset[self.config['dataset_identifier']].values[0]
+        target_ds_name = dataset[self.config['policy_path_identifier']].values[0]+"."+dataset[self.config['dataset_identifier']].values[0]
         ds_name = self.check_exists(self.views, target_ds_name, ret=True)
         if not ds_name:
             print("VDS {0} does not exist".format(target_ds_name))
@@ -167,7 +167,7 @@ class Helper:
             res = self.validate_and_apply_privilege(user=user, vds=ds_name, privilege=access)
             if res:
                 # check parent
-                target_parent_vds = '"{0}"."{1}"'.format(r[self.config['parent_path_identifier']], r[self.config['dataset_identifier']])
+                target_parent_vds = '"{0}"."{1}"'.format(r[self.config['policy_path_identifier']], r[self.config['dataset_identifier']])
                 ds_name = self.check_exists(self.views, target_parent_vds, ret=True)
                 if ds_name:
                     res = self.validate_and_apply_privilege(user=user, vds=ds_name, privilege=access)

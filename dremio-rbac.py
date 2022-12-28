@@ -3,7 +3,7 @@ from helper import Helper
 if __name__ == "__main__":
     h = Helper()
     # require properties
-    req_properties = ["dataset_identifier", "user_identifier", "path_identifier", "parent_path_identifier",
+    req_properties = ["host", "username", "password", "dataset_identifier", "user_identifier", "path_identifier", "policy_path_identifier",
                       "privilege_identifier", "filter_identifier", "criteria_identifier"]
     if h.parse_config('dremio-rbac.conf', req_properties):
         # connect to the server
