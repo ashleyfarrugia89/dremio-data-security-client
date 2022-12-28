@@ -94,6 +94,8 @@ class Helper:
             self.get_policies()
         target_ds_name = dataset[self.config['parent_path_identifier']].values[0]+"."+dataset[self.config['dataset_identifier']].values[0]
         ds_name = self.check_exists(self.views, target_ds_name, ret=True)
+        if not ds_name:
+            return False
         # get unique pairs for building up the case statement
         unique = dataset.groupby(self.config['user_identifier'])
         _filter = dataset[self.config['filter_identifier']].values[0]
