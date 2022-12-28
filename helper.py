@@ -79,11 +79,11 @@ class Helper:
         if exists and not ret:
             return True
         elif exists and ret:
-            return df.iloc[tmp[0]]
+            return tmp.values[0]
         else:
             return False
-    def validate_and_apply_policy(self, name, policy):
-        if self.policies.loc[(self.policies['name'].str.contains(name, case=False)) & (self.policies['policy'].str.contains(policy, case=False))].any().all():
+    def validate_and_apply_policy(self, name, policy, rule_str):
+        if self.policies.loc[(self.policies['name'].str.contains(name, case=False)) & (self.policies['policy'].str.contains(rule_str, case=False))].any().all():
             print("Policy does not need to change")
             return False
         else:
@@ -102,9 +102,10 @@ class Helper:
         access_policy_func = "{0}({1})".format(function_name,_filter)
         res = False
         if not skip:
-            rule_str = """CREATE OR REPLACE FUNCTION {0}
+            function_str = """CREATE OR REPLACE FUNCTION {0}
         RETURNS BOOLEAN
-            RETURN SELECT CASE""".format(function_def)
+            RETURN""".format(function_def)
+            rule_str = "SELECT CASE"
             if unique.ngroups == 0:
                 return False
             if unique.ngroups == 1:
@@ -124,7 +125,7 @@ class Helper:
                         rule_str += "\n\t\t\t\tWHEN query_user()='{0}' and {1}='{2}' THEN true".format(user, _filter, group)
                 rule_str += "\n\t\t\t\tELSE false\nEND;"
             # create rule
-            res = self.validate_and_apply_policy(function_name, rule_str)
+            res = self.validate_and_apply_policy(function_name, function_str+rule_str, rule_str)
         if res or skip:
             # grant execute permissions for admin
             grant_execute = 'GRANT EXECUTE ON FUNCTION {0} TO user "{1}"'.format(function_name, self.config['username'])
@@ -152,16 +153,18 @@ class Helper:
         df = dataset.drop_duplicates(subset=[self.config['user_identifier'], self.config['dataset_identifier'], self.config['privilege_identifier']])
         for idx, r in df.iterrows():
             user = r[self.config['user_identifier']]
-            vds = '"{0}"."{1}"'.format(r[self.config['path_identifier']], r[self.config['dataset_identifier']].upper())
+            target_vds = '"{0}"."{1}"'.format(r[self.config['path_identifier']], r[self.config['dataset_identifier']].upper())
+            ds_name = self.check_exists(self.views, target_vds, ret=True)
             # check if vds exists
-            if not self.check_exists(self.views, vds):
-                print("VDS {0} does not exist".format(vds))
+            if not ds_name:
+                print("VDS {0} does not exist".format(target_vds))
                 return False
             # check if the permission already exists if not then apply it
             access = r[self.config['privilege_identifier']]
-            res = self.validate_and_apply_privilege(user=user, vds=vds, privilege=access)
+            res = self.validate_and_apply_privilege(user=user, vds=ds_name, privilege=access)
             if res:
                 # check parent
-                parent = '"{0}"."{1}"'.format(r[self.config['parent_path_identifier']], r[self.config['dataset_identifier']])
-                if self.check_exists(self.views, parent):
-                    res = self.validate_and_apply_privilege(user=user, vds=parent, privilege=access)
+                target_parent_vds = '"{0}"."{1}"'.format(r[self.config['parent_path_identifier']], r[self.config['dataset_identifier']])
+                ds_name = self.check_exists(self.views, target_parent_vds, ret=True)
+                if ds_name:
+                    res = self.validate_and_apply_privilege(user=user, vds=ds_name, privilege=access)
