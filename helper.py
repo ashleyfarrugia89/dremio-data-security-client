@@ -107,7 +107,7 @@ class Helper:
             return False
         else:
             return self.query(policy)
-    def create_dataset_policy(self, dataset, skip=False):
+    def create_dataset_policy(self, dataset):
         # if being run for the first time then get the privileges from Dremio
         if self.policies is None:
             self.get_policies()
@@ -123,32 +123,24 @@ class Helper:
         function_def = "{0}({1} VARCHAR)".format(function_name,_filter)
         access_policy_func = "{0}({1})".format(function_name,_filter)
         res = False
-        if not skip:
-            function_str = """CREATE OR REPLACE FUNCTION {0}
-        RETURNS BOOLEAN
-            RETURN""".format(function_def)
-            rule_str = "SELECT CASE"
-            if unique.ngroups == 0:
-                return False
-            if unique.ngroups == 1:
-                key = list(unique.groups.keys())[0]
-                item = unique.get_group(key)
-                user = item[self.config['user_identifier']].values[0]
-                criteria = item[self.config['criteria_identifier']].values
-                rule_str += "\n\tWHEN query_user()='{0}' and {1}='{2}' THEN true".format(user, _filter, criteria[0])
-                rule_str += "\n\tELSE false\nEND;"
-            else:
-                for key, item in unique:
-                    user = item[self.config['user_identifier']].values[0]
-                    groups = item[self.config['criteria_identifier']].values
-                    for group in groups:
-                        if group is None:
-                            continue
-                        rule_str += "\n\t\t\t\tWHEN query_user()='{0}' and {1}='{2}' THEN true".format(user, _filter, group)
-                rule_str += "\n\t\t\t\tELSE false\nEND;"
-            # create rule
-            res = self.validate_and_apply_policy(function_name, function_str+rule_str, rule_str)
-        if res or skip:
+        function_str = """CREATE OR REPLACE FUNCTION {0}
+    RETURNS BOOLEAN
+        RETURN """.format(function_def)
+        rule_str = "SELECT CASE"
+        if unique.ngroups == 0:
+            return False
+        for key, item in unique:
+            user = item[self.config['user_identifier']].values[0]
+            groups = item[self.config['criteria_identifier']].values
+            for group in groups:
+                if group is None:
+                    continue
+                rule_str += "\n\t\t\t\tWHEN query_user()='{0}' and {1}='{2}' THEN true".format(user, _filter, group)
+            rule_str += "\n\t\t\t\tWHEN query_user()='{0}' THEN true".format(self.config['username'])
+            rule_str += "\n\t\t\t\tELSE false\nEND;"
+        # create rule
+        res = self.validate_and_apply_policy(function_name, function_str+rule_str, rule_str)
+        if res:
             # grant execute permissions for admin
             grant_execute = 'GRANT EXECUTE ON FUNCTION {0} TO user "{1}"'.format(function_name, self.config['username'])
             # create rule
@@ -176,7 +168,6 @@ class Helper:
         for idx, r in df.iterrows():
             user = r[self.config['user_identifier']]
             access = r[self.config['privilege_identifier']]
-            # skip the parent vds
             if r[self.config['path_identifier']] != "-":
                 target_vds = '"{0}"."{1}"'.format(r[self.config['path_identifier']], r[self.config['dataset_identifier']].upper())
                 ds_name = self.check_exists(self.views, target_vds, ret=True)
